@@ -221,7 +221,7 @@
   <script>
     // Helper function to truncate text longer than 20 characters
     function truncateText(text) {
-      return text.length > 20 ? text.substring(0, 14) + "..." : text;
+      return text.length > 15 ? text.substring(0, 14) + "..." : text;
     }
 
     $(document).ready(function () {
@@ -317,6 +317,12 @@
 
       // Bind spin action to the spin button
       $(".spinBtn").click(spinWheel);
+
+      $(document).on("keydown", function(e) {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          spinWheel();
+        }
+      });
 
       // Live Editor: update the editor UI with current segment data, showing percentages
       function updateEditor() {
