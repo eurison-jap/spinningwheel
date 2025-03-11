@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spinning Wheel (jQuery Version with Normalized Probabilities)</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10vw;
+      justify-content: center;
+      align-items: flex-start;
+      background: #f2f2f2;
+      padding: 20px;
+    }
+    .container {
+      position: relative;
+      display: inline-block;
+      margin-top: 20px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .wheel {
+      border-radius: 50%;
+      transform-origin: 50% 50%;
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .text-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .arrow {
+      position: absolute;
+      top: 50%;
+      left: 100%;
+      transform: translate(-50%, -50%) rotate(-90deg);
+    }
+    .spinBtn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 50px;
+      height: 50px;
+      background: #ffff;
+      border-radius: 50%;
+      cursor: pointer;
+      transform: translate(-50%, -50%);
+      z-index: 50;
+    }
+    #control-panel {
+      position: relative;
+      top: 0;
+      left: 0;
+      padding: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      z-index: 100;
+    }
+    #control-panel.disabled {
+      pointer-events: none;
+      opacity: 0.5;
+    }
+    #editor, #winners {
+      background: #fff;
+      padding: 20px;
+      border: 1px solid #ccc;
+      max-width: 100%;
+    }
+    #editor {
+      width: 500px;
+    }
+    #winners {
+      width: 200px;
+    }
+    .segment-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 12px;
+    }
+    .segment-item input[type="text"] {
+      width: 150px;
+    }
+    .segment-item input[type="range"] {
+      width: 150px;
+    }
+    /* Adjustments for devices 480px and below */
+    @media (max-width: 554px) {
+      body {
+        flex-direction: column;
+        gap: 20px;
+        padding: 10px;
+      }
+      .container {
+        width: 90%;
+        max-width: 300px;
+      }
+      .wheel {
+        width: 100%;
+      }
+      .text-overlay text {
+        font-size: 18px;
+      }
+      .arrow {
+        width: 40px;
+        height: auto;
+        left: calc(100% - 10px);
+      }
+      .spinBtn {
+        width: 40px;
+        height: 40px;
+      }
+      #control-panel {
+        flex-direction: column;
+        align-items: center;
+      }
+      #editor, #winners {
+        width: 90%;
+        padding: 10px;
+        font-size: 14px;
+      }
+      .segment-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .segment-item input[type="text"],
+      .segment-item input[type="range"] {
+        width: 100%;
+        margin-bottom: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <canvas id="wheel" class="wheel" width="400" height="400"></canvas>
+    
+    <!-- Top arc text overlay -->
+    <svg class="text-overlay top" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Drop shadow filter for top text -->
+        <filter id="shadowTop" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="black"/>
+        </filter>
+        <!-- Updated arc path (closer to center) -->
+        <path id="topArc" d="M40,200 A160,160 0 0,1 360,200" />
+      </defs>
+      <text fill="#fff" font-size="24" font-family="Arial" text-anchor="middle" filter="url(#shadowTop)">
+        <textPath xlink:href="#topArc" startOffset="50%">
+          Click on the center to spin
+        </textPath>
+      </text>
+    </svg>
+    
+    <!-- Bottom arc text overlay -->
+    <svg class="text-overlay bottom" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Drop shadow filter for bottom text -->
+        <filter id="shadowBottom" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="black"/>
+        </filter>
+        <!-- Updated arc path (closer to center) -->
+        <path id="bottomArc" d="M40,200 A160,160 0 0,0 360,200" />
+      </defs>
+      <text fill="#fff" font-size="24" font-family="Arial" text-anchor="middle" filter="url(#shadowBottom)">
+        <textPath xlink:href="#bottomArc" startOffset="50%">
+          or press ctrl+enter
+        </textPath>
+      </text>
+    </svg>
+    
+    <!-- Arrow SVG -->
+    <svg class="arrow" width="50" height="151" viewBox="0 0 149 151" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g filter="url(#filter0_d_6_2)">
+        <path d="M13 148H136L72 22L13 148Z" fill="#D9D9D9"/>
+        <path d="M13 148H136L72 22L13 148Z" stroke="black" stroke-width="2"/>
+      </g>
+      <defs>
+        <filter id="filter0_d_6_2" x="0.727544" y="0.0199099" width="147.602" height="150.68" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+          <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+          <feOffset dy="-9"/>
+          <feGaussianBlur stdDeviation="5.35"/>
+          <feComposite in2="hardAlpha" operator="out"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+          <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_6_2"/>
+          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_6_2" result="shape"/>
+        </filter>
+      </defs>
+    </svg>
+    
+    <div class="spinBtn"></div>
+  </div>
+  
+  <div id="control-panel">
+    <div id="editor">
+      <h2>Live Editor</h2>
+      <div id="segments-container"></div>
+      <button onclick="addSegment()">➕ Add Entry</button>
+      <button onclick="removeSegment()">➖ Remove Last</button>
+    </div>
+    <div id="winners">
+      <h2>Winners</h2>
+      <div id="winners-list">None</div>
+    </div>
+  </div>
+  
+  <script>
+    // Helper function to truncate text longer than 20 characters
+    function truncateText(text) {
+      return text.length > 20 ? text.substring(0, 14) + "..." : text;
+    }
+
+    $(document).ready(function () {
+      // Data setup (internal probabilities are fractions)
+      let segments = ["Prize 1", "Prize 2", "Prize 3", "Prize 4", "Prize 5", "Prize 6"];
+      let colors = ["#FF5733", "#33FF57", "#3357FF", "#F3FF33", "#FF33F6", "#33FFF6"];
+      let probabilities = [0.02, 0.02, 0.02, 0.02, 0.02, 0.9];
+      let winners = [];
+      let spinning = false;
+
+      // Canvas setup (400x400)
+      const canvas = $("#wheel")[0];
+      const ctx = canvas.getContext("2d");
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = 200; // 400/2 - margin
+
+      // Draw the wheel with segments and centered text
+      function drawWheel() {
+        const arc = (2 * Math.PI) / segments.length;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        segments.forEach((segment, i) => {
+          let startAngle = arc * i;
+          let endAngle = arc * (i + 1);
+          ctx.beginPath();
+          ctx.fillStyle = colors[i];
+          ctx.moveTo(centerX, centerY);
+          ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+          ctx.lineTo(centerX, centerY);
+          ctx.fill();
+          ctx.stroke();
+          ctx.save();
+          ctx.translate(centerX, centerY);
+          ctx.rotate(startAngle + arc / 2);
+          ctx.fillStyle = "#000";
+          ctx.font = "20px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          // Truncate segment text if longer than 20 characters
+          ctx.fillText(truncateText(segment), radius * 0.6, 0);
+          ctx.restore();
+        });
+      }
+
+      // Return an index based on custom probabilities
+      function getSegmentByProbability() {
+        let random = Math.random();
+        let cumulative = 0;
+        for (let i = 0; i < probabilities.length; i++) {
+          cumulative += probabilities[i];
+          if (random < cumulative) return i;
+        }
+        return 0;
+      }
+
+      // Spin the wheel so that the selected segment's center aligns with the right (0°)
+      function spinWheel() {
+        if (spinning) return;
+        spinning = true;
+        $("#control-panel").addClass("disabled");
+        // Hide text overlays immediately
+        $(".text-overlay").hide();
+        
+        let selectedSegment = getSegmentByProbability();
+        let arcDegrees = 360 / segments.length;
+        let segmentCenter = selectedSegment * arcDegrees + arcDegrees / 2;
+        let desiredRotation = 360 - segmentCenter;
+        let extraRotations = Math.floor(Math.random() * 5) + 5;
+        let finalAngle = extraRotations * 360 + desiredRotation;
+        let spinTime = 3000;
+        let startTime = Date.now();
+        
+        function rotate() {
+          let elapsed = Date.now() - startTime;
+          if (elapsed >= spinTime) {
+            canvas.style.transform = `rotate(${finalAngle % 360}deg)`;
+            winners.push(segments[selectedSegment]);
+            // Update winners list with truncated text for long names
+            $("#winners-list").html(winners.map(truncateText).join("<br>"));
+            spinning = false;
+            $("#control-panel").removeClass("disabled");
+            drawWheel();
+            return;
+          }
+          let progress = elapsed / spinTime;
+          let easeOut = 1 - Math.pow(1 - progress, 3);
+          let currentAngle = easeOut * finalAngle;
+          canvas.style.transform = `rotate(${currentAngle}deg)`;
+          requestAnimationFrame(rotate);
+        }
+        rotate();
+      }
+
+      // Bind spin action to the spin button
+      $(".spinBtn").click(spinWheel);
+
+      // Live Editor: update the editor UI with current segment data, showing percentages
+      function updateEditor() {
+        $("#segments-container").empty();
+        segments.forEach((seg, i) => {
+          $("#segments-container").append(`
+            <div class="segment-item">
+              <input type="text" value="${seg}" data-index="${i}" class="segment-name"/>
+              <input type="color" value="${colors[i]}" data-index="${i}" class="segment-color"/>
+              <input type="range" min="0" max="100" step="1" value="${(probabilities[i] * 100).toFixed(0)}" data-index="${i}" class="segment-probability"/>
+              <span>${(probabilities[i] * 100).toFixed(0)}%</span>
+            </div>
+          `);
+        });
+      }
+
+      // When a probability slider is changed, adjust all so their sum remains 1.
+      $(document).on("input", ".segment-probability", function () {
+        let index = $(this).data("index");
+        let newValue = parseFloat($(this).val()) / 100;
+        let totalOthers = 0;
+        for (let j = 0; j < probabilities.length; j++) {
+          if (j !== index) totalOthers += probabilities[j];
+        }
+        let newTotalOthers = 1 - newValue;
+        probabilities[index] = newValue;
+        for (let j = 0; j < probabilities.length; j++) {
+          if (j !== index) {
+            if (totalOthers === 0) {
+              probabilities[j] = newTotalOthers / (probabilities.length - 1);
+            } else {
+              probabilities[j] = (probabilities[j] / totalOthers) * newTotalOthers;
+            }
+          }
+        }
+        $(".segment-probability").each(function(){
+           let idx = $(this).data("index");
+           $(this).val((probabilities[idx] * 100).toFixed(0));
+           $(this).siblings("span").text((probabilities[idx] * 100).toFixed(0) + "%");
+        });
+      });
+
+      // Update segment name live but only redraw the wheel if not spinning
+      $(document).on("input", ".segment-name", function () {
+        let index = $(this).data("index");
+        segments[index] = $(this).val();
+        if (!spinning) {
+          drawWheel();
+        }
+      });
+      // Update segment color live immediately
+      $(document).on("input", ".segment-color", function () {
+        let index = $(this).data("index");
+        colors[index] = $(this).val();
+        drawWheel();
+      });
+
+      // Add or remove segments from the editor and wheel
+      window.addSegment = function () {
+        segments.push(`Prize ${segments.length + 1}`);
+        colors.push("#FFFFFF");
+        let newProb = 1 / (segments.length);
+        probabilities = Array(segments.length).fill(newProb);
+        updateEditor();
+        drawWheel();
+      }
+      window.removeSegment = function () {
+        if (segments.length > 1) {
+          segments.pop();
+          colors.pop();
+          let newProb = 1 / (segments.length);
+          probabilities = Array(segments.length).fill(newProb);
+          updateEditor();
+          drawWheel();
+        }
+      }
+
+      // Initial draw and editor update
+      updateEditor();
+      drawWheel();
+    });
+  </script>
+</body>
+</html>
