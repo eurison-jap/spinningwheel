@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Spinning Wheel</title>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -95,6 +96,71 @@
     }
     .segment-item input[type="range"] {
       width: 150px;
+    }
+    /* Modal styles */
+    #winnerModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+    }
+    #winnerModal .modal-content {
+      background: #fff;
+      width: 500px;
+      margin: 15% auto;
+      text-align: center;
+      border-radius: 10px;
+    }
+    #winnerModal button {
+      margin: 10px;
+      padding: 5px 10px;
+    }
+    #winnerModal #winnerText {
+      font-size: 50px;
+    }
+    .modal_heading{
+      top: 0;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgb(17, 141, 241);
+      color: #f2f2f2;
+      border-radius: 8px 8px 0 0;
+    }
+    .modal_heading h2{
+      margin: 0;
+    }
+    .modal_heading #close_icon{
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 30%;
+    }
+    .modal_heading #close_icon:hover{
+      background: #b3b3b3;
+      opacity: 0.5;
+    }
+    .modal_buttons{
+      display: flex;
+      justify-content: end;
+      align-items: end;
+      font-weight: 900;
+    }
+    .modal_buttons #closeModalBtn{
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    .modal_buttons #removeWinnerBtn{
+      background: rgb(17, 141, 241);
+      border: none;
+      border-radius: 5px;
+      color: #f2f2f2;
+      cursor: pointer;
     }
     /* Adjustments for devices 480px and below */
     @media (max-width: 554px) {
@@ -217,11 +283,41 @@
       <div id="winners-list">None</div>
     </div>
   </div>
+
+  <!-- Winner Modal -->
+  <div id="winnerModal">
+    <div class="modal-content">
+      <div class="modal_heading">
+        <h2>We have a winner!</h2>
+        <i id="close_icon" class="fas fa-times" aria-hidden="true" role="img"></i>
+      </div>
+      <p id="winnerText"></p>
+      <div class="modal_buttons">
+        <button id="closeModalBtn">Close</button>
+        <button id="removeWinnerBtn">Remove Winner</button>
+      </div>
+    </div>
+  </div>
   
   <script>
     // Helper function to truncate text longer than 20 characters
     function truncateText(text) {
       return text.length > 15 ? text.substring(0, 14) + "..." : text;
+    }
+
+    function updateWinnersList() {
+      $("#winners-list").html(winners.map(truncateText).join("<br>") || "None");
+    }
+    
+    // Show modal popup with the winner text
+    function showWinnerModal(winner) {
+      $("#winnerText").text(truncateText(winner));
+      $("#winnerModal").fadeIn(300);
+    }
+    
+    // Define a function to close the modal
+    function closeModal() {
+      $("#winnerModal").css("display", "none");
     }
 
     $(document).ready(function () {
@@ -231,6 +327,8 @@
       let probabilities = [0.02, 0.02, 0.02, 0.02, 0.02, 0.9];
       let winners = [];
       let spinning = false;
+      // Will hold the index of the last winner so we can remove it if desired.
+      let lastWinnerIndex = null;
 
       // Canvas setup (400x400)
       const canvas = $("#wheel")[0];
@@ -286,6 +384,8 @@
         $(".text-overlay").hide();
         
         let selectedSegment = getSegmentByProbability();
+        // Store the winning segment index for potential removal
+        lastWinnerIndex = selectedSegment;
         let arcDegrees = 360 / segments.length;
         let segmentCenter = selectedSegment * arcDegrees + arcDegrees / 2;
         let desiredRotation = 360 - segmentCenter;
@@ -299,11 +399,11 @@
           if (elapsed >= spinTime) {
             canvas.style.transform = `rotate(${finalAngle % 360}deg)`;
             winners.push(segments[selectedSegment]);
-            // Update winners list with truncated text for long names
             $("#winners-list").html(winners.map(truncateText).join("<br>"));
             spinning = false;
             $("#control-panel").removeClass("disabled");
             drawWheel();
+            showWinnerModal(segments[selectedSegment]);
             return;
           }
           let progress = elapsed / spinTime;
@@ -399,6 +499,39 @@
           drawWheel();
         }
       }
+
+      // Function to remove a segment at a given index and update the wheel accordingly.
+      function removeSegmentAt(index) {
+        segments.splice(index, 1);
+        colors.splice(index, 1);
+        probabilities.splice(index, 1);
+        // Recalculate probabilities equally for remaining segments
+        let newProb = 1 / segments.length;
+        probabilities = probabilities.map(() => newProb);
+        updateEditor();
+        drawWheel();
+      }
+
+      // Modal button functionalities
+      $("#removeWinnerBtn").click(function(){
+        if (lastWinnerIndex !== null) {
+          // Remove the winning segment from the wheel
+          removeSegmentAt(lastWinnerIndex);
+          // Also remove the winner from the winners list (removes last occurrence)
+          // Close the modal using the dedicated function
+          closeModal();
+          updateWinnersList();
+          lastWinnerIndex = null;
+        }
+      });
+      
+      $("#closeModalBtn").click(function(){
+        closeModal();
+      });
+
+      $("#close_icon").click(function(){
+        closeModal();
+      });
 
       // Initial draw and editor update
       updateEditor();
