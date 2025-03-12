@@ -312,10 +312,24 @@
       $("#winners-list").html(winners.map(truncateText).join("<br>") || "None");
     }
     
+    function getContrastColor(hexColor) {
+    // Remove the hash if present
+    if (hexColor.charAt(0) === "#") hexColor = hexColor.substr(1);
+    // Convert hex to RGB values
+    const r = parseInt(hexColor.substr(0, 2), 16);
+    const g = parseInt(hexColor.substr(2, 2), 16);
+    const b = parseInt(hexColor.substr(4, 2), 16);
+    // Calculate brightness using the luminance formula
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    // If brightness is high, return black; otherwise, return the default light color
+    return brightness > 186 ? "#000" : "#f2f2f2";
+    }
+
     // Show modal popup with the winner text
     function showWinnerModal(winner, winnerColor) {
     $("#winnerText").text(truncateText(winner));
     $(".modal_heading").css("background", winnerColor);
+    $(".modal_heading").css("color", getContrastColor(winnerColor));
     $("#winnerModal").fadeIn(300);
     }
     
