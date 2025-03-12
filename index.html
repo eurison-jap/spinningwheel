@@ -313,9 +313,10 @@
     }
     
     // Show modal popup with the winner text
-    function showWinnerModal(winner) {
-      $("#winnerText").text(truncateText(winner));
-      $("#winnerModal").fadeIn(300);
+    function showWinnerModal(winner, winnerColor) {
+    $("#winnerText").text(truncateText(winner));
+    $(".modal_heading").css("background", winnerColor);
+    $("#winnerModal").fadeIn(300);
     }
     
     // Define a function to close the modal
@@ -406,7 +407,7 @@
             spinning = false;
             $("#control-panel").removeClass("disabled");
             drawWheel();
-            showWinnerModal(segments[selectedSegment]);
+            showWinnerModal(segments[selectedSegment], colors[selectedSegment]);
             return;
           }
           let progress = elapsed / spinTime;
