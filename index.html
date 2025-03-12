@@ -97,7 +97,7 @@
     .segment-item input[type="range"] {
       width: 150px;
     }
-    /* Modal styles */
+    /* Winner Modal styles - full page dark overlay */
     #winnerModal {
       display: none;
       position: fixed;
@@ -105,13 +105,14 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 200;
+      background: rgba(0, 0, 0, 0.8); /* darker background */
+      z-index: 300;
     }
+    /* Modal content will be repositioned dynamically over the wheel */
     #winnerModal .modal-content {
       background: #fff;
-      width: 500px;
-      margin: 15% auto;
+      width: 30%;
+      position: absolute;
       text-align: center;
       border-radius: 10px;
     }
@@ -123,7 +124,6 @@
       font-size: 50px;
     }
     .modal_heading{
-      top: 0;
       padding: 20px;
       display: flex;
       align-items: center;
@@ -170,7 +170,7 @@
         padding: 10px;
       }
       #winnerModal .modal-content {
-      width: 300px;
+        width: 300px;
       }
       .container {
         width: 90%;
@@ -220,11 +220,9 @@
     <!-- Top arc text overlay -->
     <svg class="text-overlay top" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <!-- Drop shadow filter for top text -->
         <filter id="shadowTop" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="black"/>
         </filter>
-        <!-- Updated arc path (closer to center) -->
         <path id="topArc" d="M40,200 A160,160 0 0,1 360,200" />
       </defs>
       <text fill="#fff" font-size="24" font-family="Arial" text-anchor="middle" filter="url(#shadowTop)">
@@ -237,11 +235,9 @@
     <!-- Bottom arc text overlay -->
     <svg class="text-overlay bottom" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <!-- Drop shadow filter for bottom text -->
         <filter id="shadowBottom" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="black"/>
         </filter>
-        <!-- Updated arc path (closer to center) -->
         <path id="bottomArc" d="M40,200 A160,160 0 0,0 360,200" />
       </defs>
       <text fill="#fff" font-size="24" font-family="Arial" text-anchor="middle" filter="url(#shadowBottom)">
@@ -272,6 +268,21 @@
     </svg>
     
     <div class="spinBtn"></div>
+    
+    <!-- Winner Modal overlay -->
+    <div id="winnerModal">
+      <div class="modal-content">
+        <div class="modal_heading">
+          <h2>We have a winner!</h2>
+          <i id="close_icon" class="fas fa-times" aria-hidden="true" role="img"></i>
+        </div>
+        <p id="winnerText"></p>
+        <div class="modal_buttons">
+          <button id="closeModalBtn">Close</button>
+          <button id="removeWinnerBtn">Remove Winner</button>
+        </div>
+      </div>
+    </div>
   </div>
   
   <div id="control-panel">
@@ -280,6 +291,7 @@
       <div id="segments-container"></div>
       <button onclick="addSegment()">➕ Add Entry</button>
       <button onclick="removeSegment()">➖ Remove Last</button>
+      <button onclick="shuffleSegments()">🔀 Shuffle</button>
     </div>
     <div id="winners">
       <h2>Winners</h2>
@@ -287,21 +299,6 @@
     </div>
   </div>
 
-  <!-- Winner Modal -->
-  <div id="winnerModal">
-    <div class="modal-content">
-      <div class="modal_heading">
-        <h2>We have a winner!</h2>
-        <i id="close_icon" class="fas fa-times" aria-hidden="true" role="img"></i>
-      </div>
-      <p id="winnerText"></p>
-      <div class="modal_buttons">
-        <button id="closeModalBtn">Close</button>
-        <button id="removeWinnerBtn">Remove Winner</button>
-      </div>
-    </div>
-  </div>
-  
   <script>
     // Helper function to truncate text longer than 20 characters
     function truncateText(text) {
@@ -313,49 +310,51 @@
     }
     
     function getContrastColor(hexColor) {
-    // Remove the hash if present
-    if (hexColor.charAt(0) === "#") hexColor = hexColor.substr(1);
-    // Convert hex to RGB values
-    const r = parseInt(hexColor.substr(0, 2), 16);
-    const g = parseInt(hexColor.substr(2, 2), 16);
-    const b = parseInt(hexColor.substr(4, 2), 16);
-    // Calculate brightness using the luminance formula
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    // If brightness is high, return black; otherwise, return the default light color
-    return brightness > 186 ? "#000" : "#f2f2f2";
+      if (hexColor.charAt(0) === "#") hexColor = hexColor.substr(1);
+      const r = parseInt(hexColor.substr(0, 2), 16);
+      const g = parseInt(hexColor.substr(2, 2), 16);
+      const b = parseInt(hexColor.substr(4, 2), 16);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness > 186 ? "#000" : "#f2f2f2";
     }
 
-    // Show modal popup with the winner text
+    // Show modal and position its content over the wheel container
     function showWinnerModal(winner, winnerColor) {
-    $("#winnerText").text(truncateText(winner));
-    $(".modal_heading").css("background", winnerColor);
-    $(".modal_heading").css("color", getContrastColor(winnerColor));
-    $("#winnerModal").fadeIn(300);
+      $("#winnerText").text(truncateText(winner));
+      $(".modal_heading").css("background", winnerColor);
+      $(".modal_heading").css("color", getContrastColor(winnerColor));
+      
+      // Dynamically position the modal-content over the wheel
+      var containerOffset = $(".container").offset();
+      var containerWidth = $(".container").width();
+      var containerHeight = $(".container").height();
+      $(".modal-content").css({
+        top: containerOffset.top + containerHeight / 2,
+        left: containerOffset.left + containerWidth / 2,
+        transform: "translate(-50%, -50%)"
+      });
+      
+      $("#winnerModal").fadeIn(300);
     }
     
-    // Define a function to close the modal
     function closeModal() {
       $("#winnerModal").css("display", "none");
     }
 
     $(document).ready(function () {
-      // Data setup (internal probabilities are fractions)
       let segments = ["Prize 1", "Prize 2", "Prize 3", "Prize 4", "Prize 5", "Prize 6"];
       let colors = ["#FF5733", "#33FF57", "#3357FF", "#F3FF33", "#FF33F6", "#33FFF6"];
       let probabilities = [0.02, 0.02, 0.02, 0.02, 0.02, 0.9];
       let winners = [];
       let spinning = false;
-      // Will hold the index of the last winner so we can remove it if desired.
       let lastWinnerIndex = null;
 
-      // Canvas setup (400x400)
       const canvas = $("#wheel")[0];
       const ctx = canvas.getContext("2d");
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
-      const radius = 200; // 400/2 - margin
+      const radius = 200;
 
-      // Draw the wheel with segments and centered text
       function drawWheel() {
         const arc = (2 * Math.PI) / segments.length;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -376,13 +375,11 @@
           ctx.font = "20px Arial";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          // Truncate segment text if longer than 20 characters
           ctx.fillText(truncateText(segment), radius * 0.6, 0);
           ctx.restore();
         });
       }
 
-      // Return an index based on custom probabilities
       function getSegmentByProbability() {
         let random = Math.random();
         let cumulative = 0;
@@ -393,16 +390,13 @@
         return 0;
       }
 
-      // Spin the wheel so that the selected segment's center aligns with the right (0°)
       function spinWheel() {
         if (spinning) return;
         spinning = true;
         $("#control-panel").addClass("disabled");
-        // Hide text overlays immediately
         $(".text-overlay").hide();
         
         let selectedSegment = getSegmentByProbability();
-        // Store the winning segment index for potential removal
         lastWinnerIndex = selectedSegment;
         let arcDegrees = 360 / segments.length;
         let segmentCenter = selectedSegment * arcDegrees + arcDegrees / 2;
@@ -433,7 +427,6 @@
         rotate();
       }
 
-      // Bind spin action to the spin button
       $(".spinBtn").click(spinWheel);
 
       $(document).on("keydown", function(e) {
@@ -442,7 +435,6 @@
         }
       });
 
-      // Live Editor: update the editor UI with current segment data, showing percentages
       function updateEditor() {
         $("#segments-container").empty();
         segments.forEach((seg, i) => {
@@ -457,7 +449,6 @@
         });
       }
 
-      // When a probability slider is changed, adjust all so their sum remains 1.
       $(document).on("input", ".segment-probability", function () {
         let index = $(this).data("index");
         let newValue = parseFloat($(this).val()) / 100;
@@ -483,7 +474,6 @@
         });
       });
 
-      // Update segment name live but only redraw the wheel if not spinning
       $(document).on("input", ".segment-name", function () {
         let index = $(this).data("index");
         segments[index] = $(this).val();
@@ -491,18 +481,17 @@
           drawWheel();
         }
       });
-      // Update segment color live immediately
+      
       $(document).on("input", ".segment-color", function () {
         let index = $(this).data("index");
         colors[index] = $(this).val();
         drawWheel();
       });
 
-      // Add or remove segments from the editor and wheel
       window.addSegment = function () {
         segments.push(`Prize ${segments.length + 1}`);
         colors.push("#FFFFFF");
-        let newProb = 1 / (segments.length);
+        let newProb = 1 / segments.length;
         probabilities = Array(segments.length).fill(newProb);
         updateEditor();
         drawWheel();
@@ -511,32 +500,47 @@
         if (segments.length > 1) {
           segments.pop();
           colors.pop();
-          let newProb = 1 / (segments.length);
+          let newProb = 1 / segments.length;
           probabilities = Array(segments.length).fill(newProb);
           updateEditor();
           drawWheel();
         }
       }
 
-      // Function to remove a segment at a given index and update the wheel accordingly.
+      // Shuffle segments, colors and assign new random probabilities summing to 1.
+      window.shuffleSegments = function () {
+        let combined = segments.map((seg, i) => ({
+          segment: seg,
+          color: colors[i]
+        }));
+        for (let i = combined.length - 1; i > 0; i--) {
+          let j = Math.floor(Math.random() * (i + 1));
+          [combined[i], combined[j]] = [combined[j], combined[i]];
+        }
+        segments = combined.map(item => item.segment);
+        colors = combined.map(item => item.color);
+        
+        let randomValues = segments.map(() => Math.random());
+        let sum = randomValues.reduce((acc, val) => acc + val, 0);
+        probabilities = randomValues.map(val => val / sum);
+        
+        updateEditor();
+        drawWheel();
+      }
+
       function removeSegmentAt(index) {
         segments.splice(index, 1);
         colors.splice(index, 1);
         probabilities.splice(index, 1);
-        // Recalculate probabilities equally for remaining segments
         let newProb = 1 / segments.length;
         probabilities = probabilities.map(() => newProb);
         updateEditor();
         drawWheel();
       }
 
-      // Modal button functionalities
       $("#removeWinnerBtn").click(function(){
         if (lastWinnerIndex !== null) {
-          // Remove the winning segment from the wheel
           removeSegmentAt(lastWinnerIndex);
-          // Also remove the winner from the winners list (removes last occurrence)
-          // Close the modal using the dedicated function
           closeModal();
           updateWinnersList();
           lastWinnerIndex = null;
@@ -551,7 +555,6 @@
         closeModal();
       });
 
-      // Initial draw and editor update
       updateEditor();
       drawWheel();
     });
