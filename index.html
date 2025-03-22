@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Spinning Wheel</title>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" 
+        integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" 
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -105,10 +107,10 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.8); /* darker background */
+      background: rgba(0, 0, 0, 0.8);
       z-index: 300;
     }
-    /* Modal content will be repositioned dynamically over the wheel */
+    /* Modal content will be repositioned dynamically over the wheel container */
     #winnerModal .modal-content {
       background: #fff;
       width: 30%;
@@ -123,7 +125,7 @@
     #winnerModal #winnerText {
       font-size: 50px;
     }
-    .modal_heading{
+    .modal_heading {
       padding: 20px;
       display: flex;
       align-items: center;
@@ -132,35 +134,42 @@
       color: #f2f2f2;
       border-radius: 8px 8px 0 0;
     }
-    .modal_heading h2{
+    .modal_heading h2 {
       margin: 0;
     }
-    .modal_heading #close_icon{
+    .modal_heading #close_icon {
       cursor: pointer;
       padding: 5px;
       border-radius: 30%;
     }
-    .modal_heading #close_icon:hover{
+    .modal_heading #close_icon:hover {
       background: #b3b3b3;
       opacity: 0.5;
     }
-    .modal_buttons{
+    .modal_buttons {
       display: flex;
       justify-content: end;
       align-items: end;
       font-weight: 900;
     }
-    .modal_buttons #closeModalBtn{
+    .modal_buttons #closeModalBtn {
       background: none;
       border: none;
       cursor: pointer;
     }
-    .modal_buttons #removeWinnerBtn{
+    .modal_buttons #removeWinnerBtn {
       background: rgb(17, 141, 241);
       border: none;
       border-radius: 5px;
       color: #f2f2f2;
       cursor: pointer;
+    }
+    /* New Remove Participant Dropdown styles inside editor */
+    #remove-participant {
+      margin-top: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     /* Adjustments for devices 480px and below */
     @media (max-width: 554px) {
@@ -208,6 +217,10 @@
       .segment-item input[type="range"] {
         width: 100%;
         margin-bottom: 5px;
+      }
+      #remove-participant {
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
   </style>
@@ -274,7 +287,7 @@
       <div class="modal-content">
         <div class="modal_heading">
           <h2>We have a winner!</h2>
-          <i id="close_icon" class="fas fa-times" aria-hidden="true" role="img"></i>
+          <i id="close_icon" class="fas fa-times" aria-hidden="true"></i>
         </div>
         <p id="winnerText"></p>
         <div class="modal_buttons">
@@ -287,11 +300,28 @@
   
   <div id="control-panel">
     <div id="editor">
-      <h2>Live Editor</h2>
-      <div id="segments-container"></div>
-      <button onclick="addSegment()">➕ Add Entry</button>
-      <button onclick="removeSegment()">➖ Remove Last</button>
-      <button onclick="shuffleSegments()">🔀 Shuffle</button>
+      <h2>
+        Live Editor
+        <span id="toggleEditor" style="cursor: pointer; font-size: 0.8em;">[–]</span>
+      </h2>
+      <div id="editorContent">
+        <div id="segments-container"></div>
+        <button onclick="addSegment()">➕ Add Entry</button>
+        <button onclick="removeSegment()">➖ Remove Last</button>
+        <button onclick="shuffleSegments()">🔀 Shuffle</button>
+        <!-- Remove Participant Dropdown inside the editor -->
+        <div id="remove-participant">
+          <label for="removeParticipant">Remove Participant:</label>
+          <select id="removeParticipant">
+            <option value="">Select a participant</option>
+          </select>
+          <button onclick="removeSelectedParticipant()">Remove Selected</button>
+        </div>
+        <!-- Save and Load Buttons -->
+        <button onclick="saveWheel()">💾 Save Wheel</button>
+        <input type="file" id="loadWheelInput" style="display:none;">
+        <button id="loadButton">📂 Load Wheel</button>
+      </div>
     </div>
     <div id="winners">
       <h2>Winners</h2>
@@ -300,48 +330,8 @@
   </div>
 
   <script>
-    // Helper function to truncate text longer than 20 characters
-    function truncateText(text) {
-      return text.length > 15 ? text.substring(0, 14) + "..." : text;
-    }
-
-    function updateWinnersList() {
-      $("#winners-list").html(winners.map(truncateText).join("<br>") || "None");
-    }
-    
-    function getContrastColor(hexColor) {
-      if (hexColor.charAt(0) === "#") hexColor = hexColor.substr(1);
-      const r = parseInt(hexColor.substr(0, 2), 16);
-      const g = parseInt(hexColor.substr(2, 2), 16);
-      const b = parseInt(hexColor.substr(4, 2), 16);
-      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-      return brightness > 186 ? "#000" : "#f2f2f2";
-    }
-
-    // Show modal and position its content over the wheel container
-    function showWinnerModal(winner, winnerColor) {
-      $("#winnerText").text(truncateText(winner));
-      $(".modal_heading").css("background", winnerColor);
-      $(".modal_heading").css("color", getContrastColor(winnerColor));
-      
-      // Dynamically position the modal-content over the wheel
-      var containerOffset = $(".container").offset();
-      var containerWidth = $(".container").width();
-      var containerHeight = $(".container").height();
-      $(".modal-content").css({
-        top: containerOffset.top + containerHeight / 2,
-        left: containerOffset.left + containerWidth / 2,
-        transform: "translate(-50%, -50%)"
-      });
-      
-      $("#winnerModal").fadeIn(300);
-    }
-    
-    function closeModal() {
-      $("#winnerModal").css("display", "none");
-    }
-
     $(document).ready(function () {
+      // Initial wheel data
       let segments = ["Prize 1", "Prize 2", "Prize 3", "Prize 4", "Prize 5", "Prize 6"];
       let colors = ["#FF5733", "#33FF57", "#3357FF", "#F3FF33", "#FF33F6", "#33FFF6"];
       let probabilities = [0.02, 0.02, 0.02, 0.02, 0.02, 0.9];
@@ -354,6 +344,24 @@
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       const radius = 200;
+
+      // Helper: Truncate text
+      function truncateText(text) {
+        return text.length > 15 ? text.substring(0, 14) + "..." : text;
+      }
+
+      function updateWinnersList() {
+        $("#winners-list").html(winners.map(truncateText).join("<br>") || "None");
+      }
+
+      function getContrastColor(hexColor) {
+        if (hexColor.charAt(0) === "#") hexColor = hexColor.substr(1);
+        const r = parseInt(hexColor.substr(0, 2), 16);
+        const g = parseInt(hexColor.substr(2, 2), 16);
+        const b = parseInt(hexColor.substr(4, 2), 16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness > 186 ? "#000" : "#f2f2f2";
+      }
 
       function drawWheel() {
         const arc = (2 * Math.PI) / segments.length;
@@ -380,61 +388,6 @@
         });
       }
 
-      function getSegmentByProbability() {
-        let random = Math.random();
-        let cumulative = 0;
-        for (let i = 0; i < probabilities.length; i++) {
-          cumulative += probabilities[i];
-          if (random < cumulative) return i;
-        }
-        return 0;
-      }
-
-      function spinWheel() {
-        if (spinning) return;
-        spinning = true;
-        $("#control-panel").addClass("disabled");
-        $(".text-overlay").hide();
-        
-        let selectedSegment = getSegmentByProbability();
-        lastWinnerIndex = selectedSegment;
-        let arcDegrees = 360 / segments.length;
-        let segmentCenter = selectedSegment * arcDegrees + arcDegrees / 2;
-        let desiredRotation = 360 - segmentCenter;
-        let extraRotations = Math.floor(Math.random() * 5) + 5;
-        let finalAngle = extraRotations * 360 + desiredRotation;
-        let spinTime = 3000;
-        let startTime = Date.now();
-        
-        function rotate() {
-          let elapsed = Date.now() - startTime;
-          if (elapsed >= spinTime) {
-            canvas.style.transform = `rotate(${finalAngle % 360}deg)`;
-            winners.push(segments[selectedSegment]);
-            $("#winners-list").html(winners.map(truncateText).join("<br>"));
-            spinning = false;
-            $("#control-panel").removeClass("disabled");
-            drawWheel();
-            showWinnerModal(segments[selectedSegment], colors[selectedSegment]);
-            return;
-          }
-          let progress = elapsed / spinTime;
-          let easeOut = 1 - Math.pow(1 - progress, 3);
-          let currentAngle = easeOut * finalAngle;
-          canvas.style.transform = `rotate(${currentAngle}deg)`;
-          requestAnimationFrame(rotate);
-        }
-        rotate();
-      }
-
-      $(".spinBtn").click(spinWheel);
-
-      $(document).on("keydown", function(e) {
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-          spinWheel();
-        }
-      });
-
       function updateEditor() {
         $("#segments-container").empty();
         segments.forEach((seg, i) => {
@@ -447,47 +400,146 @@
             </div>
           `);
         });
+        updateDropdown();
       }
 
-      $(document).on("input", ".segment-probability", function () {
-        let index = $(this).data("index");
-        let newValue = parseFloat($(this).val()) / 100;
-        let totalOthers = 0;
-        for (let j = 0; j < probabilities.length; j++) {
-          if (j !== index) totalOthers += probabilities[j];
-        }
-        let newTotalOthers = 1 - newValue;
-        probabilities[index] = newValue;
-        for (let j = 0; j < probabilities.length; j++) {
-          if (j !== index) {
-            if (totalOthers === 0) {
-              probabilities[j] = newTotalOthers / (probabilities.length - 1);
-            } else {
-              probabilities[j] = (probabilities[j] / totalOthers) * newTotalOthers;
-            }
+      function updateDropdown() {
+        let dropdown = $("#removeParticipant");
+        dropdown.empty();
+        dropdown.append('<option value="">Select a participant</option>');
+        segments.forEach((seg, index) => {
+          dropdown.append(`<option value="${index}">${seg}</option>`);
+        });
+      }
+
+      function spinWheel() {
+        if (spinning) return;
+        spinning = true;
+        $("#control-panel").addClass("disabled");
+        $(".text-overlay").hide();
+
+        // Choose the winning segment based on probabilities.
+        let selectedSegment = (function() {
+          let random = Math.random();
+          let cumulative = 0;
+          for (let i = 0; i < probabilities.length; i++) {
+            cumulative += probabilities[i];
+            if (random < cumulative) return i;
           }
+          return 0;
+        })();
+
+        lastWinnerIndex = selectedSegment;
+        let arcDegrees = 360 / segments.length;
+        // Choose a random angle within the winning segment.
+        let segmentStart = selectedSegment * arcDegrees;
+        let winningAngle = segmentStart + Math.random() * arcDegrees;
+        // Calculate the rotation needed so that finalAngle mod 360 equals winningAngle.
+        let desiredRotation = 360 - winningAngle;
+        let extraRotations = Math.floor(Math.random() * 5) + 5;
+        let finalAngle = extraRotations * 360 + desiredRotation;
+        // Increase spinTime for a longer deceleration
+        let spinTime = 8000;
+        let startTime = Date.now();
+
+        function rotate() {
+          let elapsed = Date.now() - startTime;
+          if (elapsed >= spinTime) {
+            canvas.style.transform = `rotate(${finalAngle % 360}deg)`;
+            winners.push(segments[selectedSegment]);
+            updateWinnersList();
+            spinning = false;
+            $("#control-panel").removeClass("disabled");
+            drawWheel();
+            showWinnerModal(segments[selectedSegment], colors[selectedSegment]);
+            return;
+          }
+          let progress = elapsed / spinTime;
+          // Ease out quartic for a smooth and extended deceleration.
+          let easeOut = 1 - Math.pow(1 - progress, 4);
+          let currentAngle = easeOut * finalAngle;
+          canvas.style.transform = `rotate(${currentAngle}deg)`;
+          requestAnimationFrame(rotate);
         }
-        $(".segment-probability").each(function(){
-           let idx = $(this).data("index");
-           $(this).val((probabilities[idx] * 100).toFixed(0));
-           $(this).siblings("span").text((probabilities[idx] * 100).toFixed(0) + "%");
+        rotate();
+      }
+
+      function showWinnerModal(winner, winnerColor) {
+        $("#winnerText").text(truncateText(winner));
+        $(".modal_heading").css("background", winnerColor);
+        $(".modal_heading").css("color", getContrastColor(winnerColor));
+        var containerOffset = $(".container").offset();
+        var containerWidth = $(".container").width();
+        var containerHeight = $(".container").height();
+        $(".modal-content").css({
+          top: containerOffset.top + containerHeight / 2,
+          left: containerOffset.left + containerWidth / 2,
+          transform: "translate(-50%, -50%)"
+        });
+        $("#winnerModal").fadeIn(300);
+      }
+
+      function closeModal() {
+        $("#winnerModal").hide();
+      }
+
+      // Button event handlers
+      $(".spinBtn").click(spinWheel);
+      $("#closeModalBtn, #close_icon").click(closeModal);
+      $("#removeWinnerBtn").click(function(){
+        if (lastWinnerIndex !== null) {
+          segments.splice(lastWinnerIndex, 1);
+          colors.splice(lastWinnerIndex, 1);
+          probabilities.splice(lastWinnerIndex, 1);
+          let newProb = 1 / segments.length;
+          probabilities = probabilities.map(() => newProb);
+          updateEditor();
+          drawWheel();
+          $("#winnerModal").hide();
+          updateWinnersList();
+          lastWinnerIndex = null;
+        }
+      });
+      $("#toggleEditor").click(function() {
+        $("#editorContent").slideToggle(300, function() {
+          $("#toggleEditor").text($("#editorContent").is(":visible") ? "[–]" : "[+]");
         });
       });
-
       $(document).on("input", ".segment-name", function () {
         let index = $(this).data("index");
         segments[index] = $(this).val();
         if (!spinning) {
           drawWheel();
         }
+        updateDropdown();
       });
-      
       $(document).on("input", ".segment-color", function () {
         let index = $(this).data("index");
         colors[index] = $(this).val();
         drawWheel();
+        updateDropdown();
+      });
+      $(document).on("input", ".segment-probability", function () {
+        let index = $(this).data("index");
+        let newValue = parseFloat($(this).val()) / 100;
+        let totalOthers = probabilities.reduce((sum, prob, i) => i === index ? sum : sum + prob, 0);
+        let newTotalOthers = 1 - newValue;
+        probabilities[index] = newValue;
+        probabilities = probabilities.map((prob, i) => {
+          if (i !== index) {
+            return totalOthers === 0 ? newTotalOthers / (probabilities.length - 1)
+                                     : (prob / totalOthers) * newTotalOthers;
+          }
+          return newValue;
+        });
+        $(".segment-probability").each(function(){
+          let idx = $(this).data("index");
+          $(this).val((probabilities[idx] * 100).toFixed(0));
+          $(this).siblings("span").text((probabilities[idx] * 100).toFixed(0) + "%");
+        });
       });
 
+      // Functions for adding, removing, shuffling segments
       window.addSegment = function () {
         segments.push(`Prize ${segments.length + 1}`);
         colors.push("#FFFFFF");
@@ -495,7 +547,8 @@
         probabilities = Array(segments.length).fill(newProb);
         updateEditor();
         drawWheel();
-      }
+      };
+
       window.removeSegment = function () {
         if (segments.length > 1) {
           segments.pop();
@@ -505,9 +558,8 @@
           updateEditor();
           drawWheel();
         }
-      }
+      };
 
-      // Shuffle segments, colors and assign new random probabilities summing to 1.
       window.shuffleSegments = function () {
         let combined = segments.map((seg, i) => ({
           segment: seg,
@@ -519,42 +571,79 @@
         }
         segments = combined.map(item => item.segment);
         colors = combined.map(item => item.color);
-        
         let randomValues = segments.map(() => Math.random());
         let sum = randomValues.reduce((acc, val) => acc + val, 0);
         probabilities = randomValues.map(val => val / sum);
-        
         updateEditor();
         drawWheel();
-      }
+      };
 
-      function removeSegmentAt(index) {
-        segments.splice(index, 1);
-        colors.splice(index, 1);
-        probabilities.splice(index, 1);
-        let newProb = 1 / segments.length;
-        probabilities = probabilities.map(() => newProb);
-        updateEditor();
-        drawWheel();
-      }
-
-      $("#removeWinnerBtn").click(function(){
-        if (lastWinnerIndex !== null) {
-          removeSegmentAt(lastWinnerIndex);
-          closeModal();
-          updateWinnersList();
-          lastWinnerIndex = null;
+      window.removeSelectedParticipant = function () {
+        let index = $("#removeParticipant").val();
+        if (index !== "") {
+          segments.splice(parseInt(index), 1);
+          colors.splice(parseInt(index), 1);
+          probabilities.splice(parseInt(index), 1);
+          let newProb = 1 / segments.length;
+          probabilities = probabilities.map(() => newProb);
+          updateEditor();
+          drawWheel();
         }
-      });
-      
-      $("#closeModalBtn").click(function(){
-        closeModal();
+      };
+
+      // --- Save Wheel ---
+      window.saveWheel = function() {
+        const wheelData = {
+          segments: segments,
+          colors: colors,
+          probabilities: probabilities,
+          winners: winners
+        };
+        const blob = new Blob([JSON.stringify(wheelData, null, 2)], { type: "application/json" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "wheel.json";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      // --- Load Wheel: Bind file input change handler ---
+      $("#loadWheelInput").on("change", function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          let content = e.target.result.trim();
+          if (content.charCodeAt(0) === 0xFEFF) {
+            content = content.slice(1);
+          }
+          console.log("File content:", content);
+          try {
+            const data = JSON.parse(content);
+            segments = data.segments || segments;
+            colors = data.colors || colors;
+            probabilities = data.probabilities || probabilities;
+            winners = [];
+            $("#editorContent").slideDown();
+            updateEditor();
+            drawWheel();
+            updateWinnersList();
+            alert("Wheel loaded successfully!");
+          } catch (error) {
+            console.error("Parsing error:", error);
+            alert("Invalid file format");
+          }
+        };
+        reader.readAsText(file);
       });
 
-      $("#close_icon").click(function(){
-        closeModal();
+      // Bind load button click to trigger file input
+      $("#loadButton").click(function() {
+        $("#loadWheelInput").click();
       });
 
+      // Initial render
       updateEditor();
       drawWheel();
     });
